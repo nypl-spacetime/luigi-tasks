@@ -5,6 +5,8 @@ import dateutil.parser
 import pytz
 from subprocess import call
 import json
+import urllib2
+import time
 
 class Data(luigi.Task):
     dataset = luigi.Parameter()
@@ -13,7 +15,7 @@ class Data(luigi.Task):
 
     def run(self):
         node = 'node'
-        script = '/Users/bertspaan/code/nypl-spacetime/histograph-data/index.js'
+        script = '/Users/bertspaan/code/nypl-spacetime/spacetime-etl/index.js'
         code = call([node, script, '--steps', self.step, self.dataset])
 
         if code == 1:
@@ -32,7 +34,7 @@ class Data(luigi.Task):
                         return True
                 else:
                     return False
-        except IOError as inst:
+        except IOError, err:
             return False
 
     def input(self):
@@ -43,23 +45,90 @@ class Data(luigi.Task):
 class Import(luigi.Task):
     dataset = luigi.Parameter()
     max_age = luigi.IntParameter(default=24)
+    types = luigi.Parameter(default='both', significant=False)
+
+    def check_types(self, types):
+        if not types in ['pits', 'relations', 'both']:
+            raise ValueError('types should be `pits`, `relations`, or `both`')
+
+    def too_old(self, date):
+        if date is None:
+            return True
+
+        now = datetime.now(pytz.utc)
+        date = dateutil.parser.parse(date)
+
+        if (now - date).total_seconds() / 60 / 60 > self.max_age:
+            return True
+        else:
+            return False
+
+    def fill_none(self, date_updated):
+        if date_updated is None:
+            return {
+                'pits': None,
+                'relations': None
+            }
+        else:
+            return date_updated
+
+    def date_updated(self):
+        try:
+            api = 'http://localhost:3001'
+            data = json.load(urllib2.urlopen('{}/{}/{}'.format(api, 'datasets', self.dataset)))
+            if 'dateUpdated' in data:
+                return data['dateUpdated']
+            else:
+                return None
+        except urllib2.HTTPError, err:
+            if err.code == 404:
+                return None
+            else:
+                raise
 
     def run(self):
+        self.check_types(self.types)
+
         node = 'node'
         script = '/Users/bertspaan/code/nypl-spacetime/histograph-import/index.js'
 
+        first_date_updated = self.fill_none(self.date_updated())
+
         code = call([node, script, self.dataset])
-
-        # wacht hier tot dinges op redis staat!
-
-        # print 'VISSEN'
-        # print self.input()
 
         if code == 1:
             raise Exception('Neeeeetjes')
 
-    #
+        same_dates = True
+        while same_dates:
+            time.sleep(5)
+            date_updated = self.fill_none(self.date_updated())
+
+            if self.types == 'pits':
+                same_dates = first_date_updated['pits'] == date_updated['pits']
+            elif self.types == 'relations':
+                same_dates = first_date_updated['relations'] == date_updated['relations']
+            elif self.types == 'both':
+                same_dates = ((first_date_updated['pits'] == date_updated['pits']) or
+                    (first_date_updated['relations'] == date_updated['relations']))
+
     def complete(self):
-        return True
-    # #     # roep API aan, kijk wanneer last_imported
-    #     return False
+        self.check_types(self.types)
+
+        try:
+            date_updated = self.date_updated()
+        except urllib2.URLError, err:
+            raise ValueError('Could not connect to Space/Time API')
+
+        if date_updated is None:
+            return False
+
+        if self.types == 'pits':
+            return not self.too_old(date_updated['pits'])
+        elif self.types == 'relations':
+            return not self.too_old(date_updated['relations'])
+        elif self.types == 'both':
+            return not (self.too_old(date_updated['pits']) and
+                self.too_old(date_updated['relations']))
+
+        return False

@@ -18,6 +18,7 @@ class Infer(histograph.Data):
 class Import(histograph.Import):
     dataset = luigi.Parameter(default='tgn-geonames')
     max_age = luigi.IntParameter(default=24)
+    types = luigi.Parameter(default='relations')
 
     def requires(self):
-        yield Infer
+        yield Infer()
