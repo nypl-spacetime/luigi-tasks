@@ -1,5 +1,5 @@
-# my_module.py, available in your sys.path
 import luigi
+
 from datetime import datetime, timedelta
 import dateutil.parser
 import pytz
@@ -76,6 +76,7 @@ class Import(luigi.Task):
         try:
             api = 'http://localhost:3001'
             data = json.load(urllib2.urlopen('{}/{}/{}'.format(api, 'datasets', self.dataset)))
+
             if 'dateUpdated' in data:
                 return data['dateUpdated']
             else:

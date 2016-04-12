@@ -1,5 +1,5 @@
 import luigi
-import histograph
+from lib import histograph
 from datetime import timedelta
 
 MAX_AGE = timedelta(days=1)
@@ -15,4 +15,4 @@ class Import(histograph.Import):
     types = luigi.Parameter(default='pits')
 
     def requires(self):
-        yield Transform()
+        return Transform()

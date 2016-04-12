@@ -1,17 +1,19 @@
 import luigi
-import histograph
+from lib import histograph
 
-import directory_1854
-import centerlines
-import building_inspector
+from datasets import directory_1854
+from datasets import centerlines
+from datasets import building_inspector
+
+title = 'Honden!!!!'
 
 class Infer(histograph.Data):
     dataset = luigi.Parameter(default='streets-addresses')
     step = luigi.Parameter(default='infer')
-    max_age = luigi.IntParameter(default=24 * 7)
+    max_age = luigi.IntParameter(default=24 * 30)
 
     def requires(self):
-        yield [
+        return [
             building_inspector.Import(),
             centerlines.Import(),
             directory_1854.Import()
@@ -19,7 +21,7 @@ class Infer(histograph.Data):
 
 class Import(histograph.Import):
     dataset = luigi.Parameter(default='streets-addresses')
-    max_age = luigi.IntParameter(default=24 * 7)
+    max_age = luigi.IntParameter(default=24 * 30)
 
     def requires(self):
-        yield Infer()
+        return Infer()

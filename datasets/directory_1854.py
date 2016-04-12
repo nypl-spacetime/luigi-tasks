@@ -1,5 +1,5 @@
 import luigi
-import histograph
+from lib import histograph
 
 class Transform(histograph.Data):
     dataset = luigi.Parameter(default='1854-directory')
@@ -12,4 +12,4 @@ class Import(histograph.Import):
     types = luigi.Parameter(default='pits')
 
     def requires(self):
-        yield Transform()
+        return Transform()

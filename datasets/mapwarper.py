@@ -1,5 +1,5 @@
 import luigi
-import histograph
+from lib import histograph
 
 class Download(histograph.Data):
     dataset = luigi.Parameter(default='mapwarper')
@@ -12,7 +12,7 @@ class Transform(histograph.Data):
     max_age = luigi.IntParameter(default=24 * 30)
 
     def requires(self):
-        yield Download()
+        return Download()
 
 class Import(histograph.Import):
     dataset = luigi.Parameter(default='mapwarper')
@@ -20,4 +20,4 @@ class Import(histograph.Import):
     types = luigi.Parameter(default='pits')
 
     def requires(self):
-        yield Transform()
+        return Transform()
